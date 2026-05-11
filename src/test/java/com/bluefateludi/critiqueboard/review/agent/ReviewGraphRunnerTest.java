@@ -2,6 +2,9 @@ package com.bluefateludi.critiqueboard.review.agent;
 
 import com.bluefateludi.critiqueboard.review.progress.ReviewProgressEvent;
 import com.bluefateludi.critiqueboard.review.progress.ReviewProgressPublisher;
+import com.bluefateludi.critiqueboard.review.chunk.DocumentChunker;
+import com.bluefateludi.critiqueboard.review.repository.DocumentChunkRepository;
+import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import com.bluefateludi.critiqueboard.review.service.ReviewTaskService;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class ReviewGraphRunnerTest {
 
@@ -54,7 +58,13 @@ class ReviewGraphRunnerTest {
         private final List<String> transitions = new ArrayList<>();
 
         CapturingReviewTaskService() {
-            super(null, null);
+            super(
+                    mock(ReviewTaskRepository.class),
+                    mock(DocumentChunkRepository.class),
+                    new DocumentChunker(),
+                    reviewTaskId -> {
+                    }
+            );
         }
 
         @Override

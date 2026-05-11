@@ -1,11 +1,15 @@
 package com.bluefateludi.critiqueboard.review.service;
 
 import com.bluefateludi.critiqueboard.review.api.dto.ReviewTaskSummary;
+import com.bluefateludi.critiqueboard.review.chunk.DocumentChunker;
+import com.bluefateludi.critiqueboard.review.domain.DocumentChunk;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTask;
+import com.bluefateludi.critiqueboard.review.repository.DocumentChunkRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -13,10 +17,19 @@ import java.util.function.Consumer;
 public class ReviewTaskService {
 
     private final ReviewTaskRepository reviewTaskRepository;
+    private final DocumentChunkRepository documentChunkRepository;
+    private final DocumentChunker documentChunker;
     private final ReviewTaskPublisher reviewTaskPublisher;
 
-    public ReviewTaskService(ReviewTaskRepository reviewTaskRepository, ReviewTaskPublisher reviewTaskPublisher) {
+    public ReviewTaskService(
+            ReviewTaskRepository reviewTaskRepository,
+            DocumentChunkRepository documentChunkRepository,
+            DocumentChunker documentChunker,
+            ReviewTaskPublisher reviewTaskPublisher
+    ) {
         this.reviewTaskRepository = reviewTaskRepository;
+        this.documentChunkRepository = documentChunkRepository;
+        this.documentChunker = documentChunker;
         this.reviewTaskPublisher = reviewTaskPublisher;
     }
 
@@ -24,6 +37,10 @@ public class ReviewTaskService {
     public UUID createReview(String title, String originalText, String requirement, boolean secondRoundEnabled) {
         ReviewTask task = ReviewTask.create(title, originalText, requirement, secondRoundEnabled);
         ReviewTask saved = reviewTaskRepository.save(task);
+        List<DocumentChunk> chunks = documentChunker.chunk(originalText).stream()
+                .map(chunk -> DocumentChunk.create(saved, chunk.index(), chunk.content()))
+                .toList();
+        documentChunkRepository.saveAll(chunks);
         reviewTaskPublisher.publishReviewTaskCreated(saved.getId());
         return saved.getId();
     }

@@ -1,8 +1,12 @@
 package com.bluefateludi.critiqueboard.review.service;
 
+import com.bluefateludi.critiqueboard.review.chunk.DocumentChunker;
+import com.bluefateludi.critiqueboard.review.domain.DocumentChunk;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTask;
+import com.bluefateludi.critiqueboard.review.repository.DocumentChunkRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
@@ -21,6 +25,7 @@ class ReviewTaskServiceTest {
     @Test
     void createReviewPersistsTaskAndPublishesItsId() {
         ReviewTaskRepository repository = mock(ReviewTaskRepository.class);
+        DocumentChunkRepository chunkRepository = mock(DocumentChunkRepository.class);
         CapturingPublisher publisher = new CapturingPublisher();
         UUID persistedId = UUID.randomUUID();
         when(repository.save(any(ReviewTask.class))).thenAnswer(invocation -> {
@@ -29,7 +34,7 @@ class ReviewTaskServiceTest {
             return task;
         });
 
-        ReviewTaskService service = new ReviewTaskService(repository, publisher);
+        ReviewTaskService service = new ReviewTaskService(repository, chunkRepository, new DocumentChunker(), publisher);
 
         UUID reviewTaskId = service.createReview(
                 "Launch Plan",
@@ -40,6 +45,7 @@ class ReviewTaskServiceTest {
 
         assertThat(reviewTaskId).isEqualTo(persistedId);
         assertThat(publisher.publishedIds).containsExactly(persistedId);
+        verify(chunkRepository).saveAll(any());
     }
 
     @Test
@@ -54,12 +60,46 @@ class ReviewTaskServiceTest {
         UUID reviewTaskId = UUID.randomUUID();
         when(repository.findById(reviewTaskId)).thenReturn(Optional.of(task));
 
-        ReviewTaskService service = new ReviewTaskService(repository, new CapturingPublisher());
+        ReviewTaskService service = new ReviewTaskService(repository, mock(DocumentChunkRepository.class), new DocumentChunker(), new CapturingPublisher());
 
         service.markRunning(reviewTaskId);
 
         assertThat(task.getStatus()).isEqualTo(com.bluefateludi.critiqueboard.review.domain.ReviewTaskStatus.RUNNING);
         verify(repository).findById(reviewTaskId);
+    }
+
+    @Test
+    void createReviewPersistsDocumentChunksBeforePublishingTask() {
+        ReviewTaskRepository repository = mock(ReviewTaskRepository.class);
+        DocumentChunkRepository chunkRepository = mock(DocumentChunkRepository.class);
+        CapturingPublisher publisher = new CapturingPublisher();
+        UUID persistedId = UUID.randomUUID();
+        when(repository.save(any(ReviewTask.class))).thenAnswer(invocation -> {
+            ReviewTask task = invocation.getArgument(0);
+            ReflectionTestUtils.setField(task, "id", persistedId);
+            return task;
+        });
+
+        ReviewTaskService service = new ReviewTaskService(repository, chunkRepository, new DocumentChunker(), publisher);
+
+        service.createReview(
+                "Launch Plan",
+                "First paragraph.\n\nSecond paragraph.",
+                "Review structure, logic, and risk.",
+                true
+        );
+
+        ArgumentCaptor<Iterable<DocumentChunk>> chunksCaptor = ArgumentCaptor.forClass(Iterable.class);
+        verify(chunkRepository).saveAll(chunksCaptor.capture());
+        List<DocumentChunk> savedChunks = new ArrayList<>();
+        chunksCaptor.getValue().forEach(savedChunks::add);
+
+        assertThat(savedChunks).hasSize(2);
+        assertThat(savedChunks.get(0).getChunkIndex()).isEqualTo(0);
+        assertThat(savedChunks.get(0).getContent()).isEqualTo("First paragraph.");
+        assertThat(savedChunks.get(1).getChunkIndex()).isEqualTo(1);
+        assertThat(savedChunks.get(1).getContent()).isEqualTo("Second paragraph.");
+        assertThat(publisher.publishedIds).containsExactly(persistedId);
     }
 
     private static class CapturingPublisher implements ReviewTaskPublisher {
@@ -70,4 +110,5 @@ class ReviewTaskServiceTest {
             publishedIds.add(reviewTaskId);
         }
     }
+
 }

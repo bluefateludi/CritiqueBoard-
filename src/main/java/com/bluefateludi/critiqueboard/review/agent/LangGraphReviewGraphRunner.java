@@ -7,7 +7,6 @@ import com.bluefateludi.critiqueboard.review.service.ReviewCritiqueService;
 import com.bluefateludi.critiqueboard.review.service.ReviewTaskService;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -16,15 +15,18 @@ public class LangGraphReviewGraphRunner implements ReviewGraphRunner {
     private final ReviewProgressPublisher progressPublisher;
     private final ReviewTaskService reviewTaskService;
     private final ReviewCritiqueService reviewCritiqueService;
+    private final SpecialistReviewer specialistReviewer;
 
     public LangGraphReviewGraphRunner(
             ReviewProgressPublisher progressPublisher,
             ReviewTaskService reviewTaskService,
-            ReviewCritiqueService reviewCritiqueService
+            ReviewCritiqueService reviewCritiqueService,
+            SpecialistReviewer specialistReviewer
     ) {
         this.progressPublisher = progressPublisher;
         this.reviewTaskService = reviewTaskService;
         this.reviewCritiqueService = reviewCritiqueService;
+        this.specialistReviewer = specialistReviewer;
     }
 
     @Override
@@ -51,38 +53,34 @@ public class LangGraphReviewGraphRunner implements ReviewGraphRunner {
                 reviewTaskId,
                 1,
                 "Review document structure and information hierarchy.",
-                deterministicResult(
+                specialistReviewer.review(new SpecialistReviewRequest(
+                        reviewTaskId,
                         AgentRole.STRUCTURE,
-                        78,
-                        "The document has a workable structure, but key conclusions should appear earlier.",
-                        "Move the main conclusion before detailed execution notes."
-                )
+                        1,
+                        "Review document structure and information hierarchy."
+                ))
         );
         reviewCritiqueService.recordSpecialistResult(
                 reviewTaskId,
                 1,
                 "Review reasoning, assumptions, and internal consistency.",
-                deterministicResult(
+                specialistReviewer.review(new SpecialistReviewRequest(
+                        reviewTaskId,
                         AgentRole.LOGIC,
-                        74,
-                        "The main reasoning is understandable, but several assumptions need explicit support.",
-                        "Add assumptions and decision criteria before the final recommendation."
-                )
+                        1,
+                        "Review reasoning, assumptions, and internal consistency."
+                ))
         );
         reviewCritiqueService.recordSpecialistResult(
                 reviewTaskId,
                 1,
                 "Review risks, missing mitigations, and failure modes.",
-                deterministicResult(
+                specialistReviewer.review(new SpecialistReviewRequest(
+                        reviewTaskId,
                         AgentRole.RISK,
-                        70,
-                        "The risk section needs clearer mitigation owners and trigger conditions.",
-                        "Add risk owners, trigger thresholds, and rollback actions."
-                )
+                        1,
+                        "Review risks, missing mitigations, and failure modes."
+                ))
         );
-    }
-
-    private CritiqueResult deterministicResult(AgentRole role, int score, String feedback, String suggestion) {
-        return new CritiqueResult(role, score, feedback, List.of(), List.of(suggestion), 0.7);
     }
 }

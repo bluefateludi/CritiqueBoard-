@@ -27,7 +27,13 @@ class ReviewGraphRunnerTest {
         CapturingProgressPublisher progressPublisher = new CapturingProgressPublisher();
         CapturingReviewTaskService reviewTaskService = new CapturingReviewTaskService();
         CapturingReviewCritiqueService critiqueService = new CapturingReviewCritiqueService();
-        ReviewGraphRunner runner = new LangGraphReviewGraphRunner(progressPublisher, reviewTaskService, critiqueService);
+        CapturingSpecialistReviewer specialistReviewer = new CapturingSpecialistReviewer();
+        ReviewGraphRunner runner = new LangGraphReviewGraphRunner(
+                progressPublisher,
+                reviewTaskService,
+                critiqueService,
+                specialistReviewer
+        );
 
         runner.run(reviewTaskId);
 
@@ -48,6 +54,7 @@ class ReviewGraphRunnerTest {
                 "COMPLETED"
         );
         assertThat(critiqueService.roles).containsExactly(AgentRole.STRUCTURE, AgentRole.LOGIC, AgentRole.RISK);
+        assertThat(specialistReviewer.roles).containsExactly(AgentRole.STRUCTURE, AgentRole.LOGIC, AgentRole.RISK);
     }
 
     private static class CapturingProgressPublisher implements ReviewProgressPublisher {
@@ -115,6 +122,23 @@ class ReviewGraphRunnerTest {
         ) {
             roles.add(result.role());
             return null;
+        }
+    }
+
+    private static class CapturingSpecialistReviewer implements SpecialistReviewer {
+        private final List<AgentRole> roles = new ArrayList<>();
+
+        @Override
+        public CritiqueResult review(SpecialistReviewRequest request) {
+            roles.add(request.role());
+            return new CritiqueResult(
+                    request.role(),
+                    80,
+                    "Captured " + request.role() + " feedback.",
+                    List.of(),
+                    List.of("Captured suggestion."),
+                    0.8
+            );
         }
     }
 }

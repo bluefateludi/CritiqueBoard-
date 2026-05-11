@@ -9,6 +9,7 @@ import com.bluefateludi.critiqueboard.review.repository.AgentRunRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewCritiqueRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,7 +24,7 @@ import static org.mockito.Mockito.when;
 class ReviewCritiqueServiceTest {
 
     @Test
-    void recordsSpecialistResultWithCompletedAgentRun() {
+    void recordsSpecialistResultForExistingAgentRun() {
         ReviewTaskRepository taskRepository = mock(ReviewTaskRepository.class);
         AgentRunRepository agentRunRepository = mock(AgentRunRepository.class);
         ReviewCritiqueRepository critiqueRepository = mock(ReviewCritiqueRepository.class);
@@ -34,8 +35,12 @@ class ReviewCritiqueServiceTest {
                 true
         );
         UUID reviewTaskId = UUID.randomUUID();
+        UUID agentRunId = UUID.randomUUID();
+        AgentRun run = AgentRun.create(task, AgentRole.LOGIC, 1, "Logic specialist task");
+        run.markRunning();
+        ReflectionTestUtils.setField(run, "id", agentRunId);
         when(taskRepository.findById(reviewTaskId)).thenReturn(Optional.of(task));
-        when(agentRunRepository.save(any(AgentRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(agentRunRepository.findById(agentRunId)).thenReturn(Optional.of(run));
         when(critiqueRepository.save(any(ReviewCritique.class))).thenAnswer(invocation -> invocation.getArgument(0));
         ReviewCritiqueService service = new ReviewCritiqueService(taskRepository, agentRunRepository, critiqueRepository);
         CritiqueResult result = new CritiqueResult(
@@ -47,12 +52,12 @@ class ReviewCritiqueServiceTest {
                 0.9
         );
 
-        ReviewCritique critique = service.recordSpecialistResult(reviewTaskId, 1, "Logic specialist task", result);
+        ReviewCritique critique = service.recordSpecialistResult(reviewTaskId, agentRunId, result);
 
         assertThat(critique.getReviewTask()).isSameAs(task);
         assertThat(critique.getRole()).isEqualTo(AgentRole.LOGIC);
-        assertThat(critique.getAgentRun().getOutputSummary()).isEqualTo("Argument is mostly coherent.");
-        verify(agentRunRepository).save(any(AgentRun.class));
+        assertThat(critique.getAgentRun()).isSameAs(run);
+        verify(agentRunRepository).findById(agentRunId);
         verify(critiqueRepository).save(critique);
     }
 }

@@ -2,6 +2,7 @@ package com.bluefateludi.critiqueboard.review.service;
 
 import com.bluefateludi.critiqueboard.review.domain.ReviewTask;
 import com.bluefateludi.critiqueboard.review.domain.TokenUsageRecord;
+import com.bluefateludi.critiqueboard.review.repository.AgentRunRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import com.bluefateludi.critiqueboard.review.repository.TokenUsageRepository;
 import dev.langchain4j.model.output.TokenUsage;
@@ -18,16 +19,23 @@ public class TokenUsageService {
     private static final BigDecimal ONE_MILLION = new BigDecimal("1000000");
 
     private final ReviewTaskRepository reviewTaskRepository;
+    private final AgentRunRepository agentRunRepository;
     private final TokenUsageRepository tokenUsageRepository;
 
-    public TokenUsageService(ReviewTaskRepository reviewTaskRepository, TokenUsageRepository tokenUsageRepository) {
+    public TokenUsageService(
+            ReviewTaskRepository reviewTaskRepository,
+            AgentRunRepository agentRunRepository,
+            TokenUsageRepository tokenUsageRepository
+    ) {
         this.reviewTaskRepository = reviewTaskRepository;
+        this.agentRunRepository = agentRunRepository;
         this.tokenUsageRepository = tokenUsageRepository;
     }
 
     @Transactional
     public TokenUsageRecord recordModelUsage(
             UUID reviewTaskId,
+            UUID agentRunId,
             String modelName,
             TokenUsage tokenUsage,
             BigDecimal inputCostPerMillionTokens,
@@ -43,9 +51,11 @@ public class TokenUsageService {
         );
         ReviewTask task = reviewTaskRepository.findById(reviewTaskId)
                 .orElseThrow(() -> new IllegalArgumentException("Review task not found: " + reviewTaskId));
+        var run = agentRunId == null ? null : agentRunRepository.findById(agentRunId)
+                .orElseThrow(() -> new IllegalArgumentException("Agent run not found: " + agentRunId));
         TokenUsageRecord record = TokenUsageRecord.create(
                 task,
-                null,
+                run,
                 modelName,
                 promptTokens,
                 completionTokens,

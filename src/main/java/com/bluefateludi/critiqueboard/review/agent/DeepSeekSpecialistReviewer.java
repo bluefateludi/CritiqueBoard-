@@ -77,6 +77,7 @@ public class DeepSeekSpecialistReviewer implements SpecialistReviewer {
         }
         tokenUsageService.recordModelUsage(
                 request.reviewTaskId(),
+                request.agentRunId(),
                 properties.modelName(),
                 tokenUsage,
                 properties.inputCostPerMillionTokens(),

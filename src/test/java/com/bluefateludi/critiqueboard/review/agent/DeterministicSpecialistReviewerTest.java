@@ -15,6 +15,7 @@ class DeterministicSpecialistReviewerTest {
 
         CritiqueResult result = reviewer.review(new SpecialistReviewRequest(
                 UUID.randomUUID(),
+                UUID.randomUUID(),
                 AgentRole.RISK,
                 1,
                 "Review risks, missing mitigations, and failure modes."

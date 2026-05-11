@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record SpecialistReviewRequest(
         UUID reviewTaskId,
+        UUID agentRunId,
         AgentRole role,
         int roundNo,
         String inputSummary

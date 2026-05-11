@@ -49,6 +49,7 @@ class DeepSeekSpecialistReviewerTest {
 
         CritiqueResult result = reviewer.review(new SpecialistReviewRequest(
                 UUID.randomUUID(),
+                UUID.randomUUID(),
                 AgentRole.STRUCTURE,
                 1,
                 "Review document structure."
@@ -81,6 +82,7 @@ class DeepSeekSpecialistReviewerTest {
 
         CritiqueResult result = reviewer.review(new SpecialistReviewRequest(
                 UUID.randomUUID(),
+                UUID.randomUUID(),
                 AgentRole.RISK,
                 1,
                 "Review risks."
@@ -111,6 +113,7 @@ class DeepSeekSpecialistReviewerTest {
 
         CritiqueResult result = reviewer.review(new SpecialistReviewRequest(
                 UUID.randomUUID(),
+                UUID.randomUUID(),
                 AgentRole.LOGIC,
                 1,
                 "Review logic."
@@ -136,6 +139,7 @@ class DeepSeekSpecialistReviewerTest {
     @Test
     void recordsTokenUsageWhenModelReturnsUsageMetadata() {
         UUID reviewTaskId = UUID.randomUUID();
+        UUID agentRunId = UUID.randomUUID();
         CapturingChatModel chatModel = new CapturingChatModel("""
                 {
                   "score": 88,
@@ -154,10 +158,11 @@ class DeepSeekSpecialistReviewerTest {
                 tokenUsageService
         );
 
-        reviewer.review(new SpecialistReviewRequest(reviewTaskId, AgentRole.STRUCTURE, 1, "Review structure."));
+        reviewer.review(new SpecialistReviewRequest(reviewTaskId, agentRunId, AgentRole.STRUCTURE, 1, "Review structure."));
 
         verify(tokenUsageService).recordModelUsage(
                 eq(reviewTaskId),
+                eq(agentRunId),
                 eq("deepseek-chat"),
                 eq(chatModel.tokenUsage),
                 eq(new BigDecimal("0.14000000")),

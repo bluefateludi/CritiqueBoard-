@@ -28,3 +28,5 @@ critiqueboard:
       api-key: ${DEEPSEEK_API_KEY:}
       model-name: ${DEEPSEEK_MODEL_NAME:deepseek-v4-flash}
       timeout-seconds: ${DEEPSEEK_TIMEOUT_SECONDS:60}
+      input-cost-per-million-tokens: ${DEEPSEEK_INPUT_COST_PER_MILLION_TOKENS:0}
+      output-cost-per-million-tokens: ${DEEPSEEK_OUTPUT_COST_PER_MILLION_TOKENS:0}

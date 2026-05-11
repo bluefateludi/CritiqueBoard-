@@ -46,6 +46,13 @@ Set a DeepSeek API key before running with real model calls:
 set DEEPSEEK_API_KEY=your-api-key
 ```
 
+Optional cost settings are used when writing `token_usage` records:
+
+```bash
+set DEEPSEEK_INPUT_COST_PER_MILLION_TOKENS=0
+set DEEPSEEK_OUTPUT_COST_PER_MILLION_TOKENS=0
+```
+
 Default model config is in `src/main/resources/application.yml`.
 
 ## Run

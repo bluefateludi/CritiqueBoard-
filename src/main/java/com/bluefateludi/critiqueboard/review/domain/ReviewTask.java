@@ -7,12 +7,17 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "review_task")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ReviewTask {
 
     @Id
@@ -40,9 +45,6 @@ public class ReviewTask {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    protected ReviewTask() {
-    }
-
     private ReviewTask(String title, String originalText, String requirement, boolean secondRoundEnabled) {
         this.title = title;
         this.originalText = originalText;
@@ -55,37 +57,5 @@ public class ReviewTask {
 
     public static ReviewTask create(String title, String originalText, String requirement, boolean secondRoundEnabled) {
         return new ReviewTask(title, originalText, requirement, secondRoundEnabled);
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public String getOriginalText() {
-        return originalText;
-    }
-
-    public String getRequirement() {
-        return requirement;
-    }
-
-    public ReviewTaskStatus getStatus() {
-        return status;
-    }
-
-    public boolean isSecondRoundEnabled() {
-        return secondRoundEnabled;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
     }
 }

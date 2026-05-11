@@ -1,7 +1,6 @@
 package com.bluefateludi.critiqueboard.review.service;
 
 import com.bluefateludi.critiqueboard.review.domain.ReviewTask;
-import com.bluefateludi.critiqueboard.review.domain.CreateReviewCommand;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -30,13 +29,12 @@ class ReviewTaskServiceTest {
 
         ReviewTaskService service = new ReviewTaskService(repository, publisher);
 
-        CreateReviewCommand command = new CreateReviewCommand(
+        UUID reviewTaskId = service.createReview(
                 "Launch Plan",
                 "We will launch the product in Q3.",
                 "Review structure, logic, and risk.",
                 true
         );
-        UUID reviewTaskId = service.createReview(command);
 
         assertThat(reviewTaskId).isEqualTo(persistedId);
         assertThat(publisher.publishedIds).containsExactly(persistedId);

@@ -1,10 +1,13 @@
 package com.bluefateludi.critiqueboard.review.service;
 
 import com.bluefateludi.critiqueboard.review.api.dto.ReviewTaskSummary;
+import com.bluefateludi.critiqueboard.review.api.dto.SpecialistReviewSummary;
 import com.bluefateludi.critiqueboard.review.chunk.DocumentChunker;
 import com.bluefateludi.critiqueboard.review.domain.DocumentChunk;
+import com.bluefateludi.critiqueboard.review.domain.ReviewCritique;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTask;
 import com.bluefateludi.critiqueboard.review.repository.DocumentChunkRepository;
+import com.bluefateludi.critiqueboard.review.repository.ReviewCritiqueRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,17 +21,20 @@ public class ReviewTaskService {
 
     private final ReviewTaskRepository reviewTaskRepository;
     private final DocumentChunkRepository documentChunkRepository;
+    private final ReviewCritiqueRepository reviewCritiqueRepository;
     private final DocumentChunker documentChunker;
     private final ReviewTaskPublisher reviewTaskPublisher;
 
     public ReviewTaskService(
             ReviewTaskRepository reviewTaskRepository,
             DocumentChunkRepository documentChunkRepository,
+            ReviewCritiqueRepository reviewCritiqueRepository,
             DocumentChunker documentChunker,
             ReviewTaskPublisher reviewTaskPublisher
     ) {
         this.reviewTaskRepository = reviewTaskRepository;
         this.documentChunkRepository = documentChunkRepository;
+        this.reviewCritiqueRepository = reviewCritiqueRepository;
         this.documentChunker = documentChunker;
         this.reviewTaskPublisher = reviewTaskPublisher;
     }
@@ -49,7 +55,12 @@ public class ReviewTaskService {
     public ReviewTaskSummary getReview(UUID reviewTaskId) {
         ReviewTask task = reviewTaskRepository.findById(reviewTaskId)
                 .orElseThrow(() -> new IllegalArgumentException("Review task not found: " + reviewTaskId));
-        return new ReviewTaskSummary(task.getId(), task.getTitle(), task.getStatus());
+        List<SpecialistReviewSummary> specialistReviews = reviewCritiqueRepository
+                .findByReviewTaskIdOrderByCreatedAtAsc(reviewTaskId)
+                .stream()
+                .map(this::toSpecialistSummary)
+                .toList();
+        return new ReviewTaskSummary(task.getId(), task.getTitle(), task.getStatus(), specialistReviews);
     }
 
     @Transactional
@@ -81,5 +92,15 @@ public class ReviewTaskService {
         ReviewTask task = reviewTaskRepository.findById(reviewTaskId)
                 .orElseThrow(() -> new IllegalArgumentException("Review task not found: " + reviewTaskId));
         transition.accept(task);
+    }
+
+    private SpecialistReviewSummary toSpecialistSummary(ReviewCritique critique) {
+        return new SpecialistReviewSummary(
+                critique.getRole(),
+                critique.getScore(),
+                critique.getFeedback(),
+                critique.getSuggestions(),
+                critique.getConfidence()
+        );
     }
 }

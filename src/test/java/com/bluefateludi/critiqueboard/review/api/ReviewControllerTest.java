@@ -1,6 +1,8 @@
 package com.bluefateludi.critiqueboard.review.api;
 
 import com.bluefateludi.critiqueboard.review.api.dto.ReviewTaskSummary;
+import com.bluefateludi.critiqueboard.review.api.dto.SpecialistReviewSummary;
+import com.bluefateludi.critiqueboard.review.domain.AgentRole;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTaskStatus;
 import com.bluefateludi.critiqueboard.review.service.ReviewTaskService;
 import org.junit.jupiter.api.Test;
@@ -11,6 +13,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
+import java.util.List;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.when;
@@ -57,12 +60,26 @@ class ReviewControllerTest {
     void getReviewReturnsTaskStatus() throws Exception {
         UUID reviewTaskId = UUID.randomUUID();
         when(reviewTaskService.getReview(reviewTaskId))
-                .thenReturn(new ReviewTaskSummary(reviewTaskId, "Launch Plan", ReviewTaskStatus.RUNNING));
+                .thenReturn(new ReviewTaskSummary(
+                        reviewTaskId,
+                        "Launch Plan",
+                        ReviewTaskStatus.RUNNING,
+                        List.of(new SpecialistReviewSummary(
+                                AgentRole.STRUCTURE,
+                                78,
+                                "The document has a workable structure.",
+                                List.of("Move the main conclusion earlier."),
+                                0.7
+                        ))
+                ));
 
         mockMvc.perform(get("/api/reviews/{id}", reviewTaskId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reviewTaskId", is(reviewTaskId.toString())))
                 .andExpect(jsonPath("$.title", is("Launch Plan")))
-                .andExpect(jsonPath("$.status", is("RUNNING")));
+                .andExpect(jsonPath("$.status", is("RUNNING")))
+                .andExpect(jsonPath("$.specialistReviews[0].role", is("STRUCTURE")))
+                .andExpect(jsonPath("$.specialistReviews[0].score", is(78)))
+                .andExpect(jsonPath("$.specialistReviews[0].suggestions[0]", is("Move the main conclusion earlier.")));
     }
 }

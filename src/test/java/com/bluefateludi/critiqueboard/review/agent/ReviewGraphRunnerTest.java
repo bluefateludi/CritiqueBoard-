@@ -3,8 +3,11 @@ package com.bluefateludi.critiqueboard.review.agent;
 import com.bluefateludi.critiqueboard.review.progress.ReviewProgressEvent;
 import com.bluefateludi.critiqueboard.review.progress.ReviewProgressPublisher;
 import com.bluefateludi.critiqueboard.review.chunk.DocumentChunker;
+import com.bluefateludi.critiqueboard.review.domain.AgentRole;
 import com.bluefateludi.critiqueboard.review.repository.DocumentChunkRepository;
+import com.bluefateludi.critiqueboard.review.repository.ReviewCritiqueRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
+import com.bluefateludi.critiqueboard.review.service.ReviewCritiqueService;
 import com.bluefateludi.critiqueboard.review.service.ReviewTaskService;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +26,8 @@ class ReviewGraphRunnerTest {
         UUID reviewTaskId = UUID.randomUUID();
         CapturingProgressPublisher progressPublisher = new CapturingProgressPublisher();
         CapturingReviewTaskService reviewTaskService = new CapturingReviewTaskService();
-        ReviewGraphRunner runner = new LangGraphReviewGraphRunner(progressPublisher, reviewTaskService);
+        CapturingReviewCritiqueService critiqueService = new CapturingReviewCritiqueService();
+        ReviewGraphRunner runner = new LangGraphReviewGraphRunner(progressPublisher, reviewTaskService, critiqueService);
 
         runner.run(reviewTaskId);
 
@@ -43,6 +47,7 @@ class ReviewGraphRunnerTest {
                 "SUMMARIZING",
                 "COMPLETED"
         );
+        assertThat(critiqueService.roles).containsExactly(AgentRole.STRUCTURE, AgentRole.LOGIC, AgentRole.RISK);
     }
 
     private static class CapturingProgressPublisher implements ReviewProgressPublisher {
@@ -61,6 +66,7 @@ class ReviewGraphRunnerTest {
             super(
                     mock(ReviewTaskRepository.class),
                     mock(DocumentChunkRepository.class),
+                    mock(ReviewCritiqueRepository.class),
                     new DocumentChunker(),
                     reviewTaskId -> {
                     }
@@ -90,6 +96,25 @@ class ReviewGraphRunnerTest {
         @Override
         public void markCompleted(UUID reviewTaskId) {
             transitions.add("COMPLETED");
+        }
+    }
+
+    private static class CapturingReviewCritiqueService extends ReviewCritiqueService {
+        private final List<AgentRole> roles = new ArrayList<>();
+
+        CapturingReviewCritiqueService() {
+            super(mock(ReviewTaskRepository.class), mock(), mock());
+        }
+
+        @Override
+        public com.bluefateludi.critiqueboard.review.domain.ReviewCritique recordSpecialistResult(
+                UUID reviewTaskId,
+                int roundNo,
+                String inputSummary,
+                CritiqueResult result
+        ) {
+            roles.add(result.role());
+            return null;
         }
     }
 }

@@ -4,6 +4,7 @@ import com.bluefateludi.critiqueboard.review.chunk.DocumentChunker;
 import com.bluefateludi.critiqueboard.review.domain.DocumentChunk;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTask;
 import com.bluefateludi.critiqueboard.review.repository.DocumentChunkRepository;
+import com.bluefateludi.critiqueboard.review.repository.ReviewCritiqueRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -34,7 +35,7 @@ class ReviewTaskServiceTest {
             return task;
         });
 
-        ReviewTaskService service = new ReviewTaskService(repository, chunkRepository, new DocumentChunker(), publisher);
+        ReviewTaskService service = new ReviewTaskService(repository, chunkRepository, mock(ReviewCritiqueRepository.class), new DocumentChunker(), publisher);
 
         UUID reviewTaskId = service.createReview(
                 "Launch Plan",
@@ -60,7 +61,13 @@ class ReviewTaskServiceTest {
         UUID reviewTaskId = UUID.randomUUID();
         when(repository.findById(reviewTaskId)).thenReturn(Optional.of(task));
 
-        ReviewTaskService service = new ReviewTaskService(repository, mock(DocumentChunkRepository.class), new DocumentChunker(), new CapturingPublisher());
+        ReviewTaskService service = new ReviewTaskService(
+                repository,
+                mock(DocumentChunkRepository.class),
+                mock(ReviewCritiqueRepository.class),
+                new DocumentChunker(),
+                new CapturingPublisher()
+        );
 
         service.markRunning(reviewTaskId);
 
@@ -80,7 +87,7 @@ class ReviewTaskServiceTest {
             return task;
         });
 
-        ReviewTaskService service = new ReviewTaskService(repository, chunkRepository, new DocumentChunker(), publisher);
+        ReviewTaskService service = new ReviewTaskService(repository, chunkRepository, mock(ReviewCritiqueRepository.class), new DocumentChunker(), publisher);
 
         service.createReview(
                 "Launch Plan",

@@ -8,12 +8,13 @@ class ReviewTaskTest {
 
     @Test
     void createStartsPendingAndKeepsSubmissionFields() {
-        ReviewTask task = ReviewTask.create(
+        CreateReviewCommand command = new CreateReviewCommand(
                 "Launch Plan",
                 "We will launch the product in Q3.",
                 "Review structure, logic, and risk.",
                 true
         );
+        ReviewTask task = ReviewTask.create(command);
 
         assertThat(task.getStatus()).isEqualTo(ReviewTaskStatus.PENDING);
         assertThat(task.getTitle()).isEqualTo("Launch Plan");

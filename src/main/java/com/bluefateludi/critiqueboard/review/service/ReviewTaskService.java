@@ -1,5 +1,6 @@
 package com.bluefateludi.critiqueboard.review.service;
 
+import com.bluefateludi.critiqueboard.review.domain.CreateReviewCommand;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTask;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.springframework.stereotype.Service;
@@ -19,8 +20,8 @@ public class ReviewTaskService {
     }
 
     @Transactional
-    public UUID createReview(String title, String originalText, String requirement, boolean secondRoundEnabled) {
-        ReviewTask task = ReviewTask.create(title, originalText, requirement, secondRoundEnabled);
+    public UUID createReview(CreateReviewCommand command) {
+        ReviewTask task = ReviewTask.create(command);
         ReviewTask saved = reviewTaskRepository.save(task);
         reviewTaskPublisher.publishReviewTaskCreated(saved.getId());
         return saved.getId();

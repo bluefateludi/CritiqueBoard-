@@ -45,17 +45,17 @@ public class ReviewTask {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    private ReviewTask(String title, String originalText, String requirement, boolean secondRoundEnabled) {
-        this.title = title;
-        this.originalText = originalText;
-        this.requirement = requirement;
-        this.secondRoundEnabled = secondRoundEnabled;
+    private ReviewTask(CreateReviewCommand command) {
+        title = command.title();
+        originalText = command.originalText();
+        requirement = command.requirement();
+        secondRoundEnabled = command.secondRoundEnabled();
         this.status = ReviewTaskStatus.PENDING;
         this.createdAt = OffsetDateTime.now();
         this.updatedAt = this.createdAt;
     }
 
-    public static ReviewTask create(String title, String originalText, String requirement, boolean secondRoundEnabled) {
-        return new ReviewTask(title, originalText, requirement, secondRoundEnabled);
+    public static ReviewTask create(CreateReviewCommand command) {
+        return new ReviewTask(command);
     }
 }

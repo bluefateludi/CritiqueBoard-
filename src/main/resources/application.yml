@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: critiqueboard
+  datasource:
+    url: ${CRITIQUEBOARD_DATASOURCE_URL:jdbc:postgresql://localhost:5432/critiqueboard}
+    username: ${CRITIQUEBOARD_DATASOURCE_USERNAME:critiqueboard}
+    password: ${CRITIQUEBOARD_DATASOURCE_PASSWORD:critiqueboard}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  rabbitmq:
+    host: ${CRITIQUEBOARD_RABBITMQ_HOST:localhost}
+    port: ${CRITIQUEBOARD_RABBITMQ_PORT:5672}
+    username: ${CRITIQUEBOARD_RABBITMQ_USERNAME:critiqueboard}
+    password: ${CRITIQUEBOARD_RABBITMQ_PASSWORD:critiqueboard}
+
+server:
+  port: ${PORT:8080}
+
+critiqueboard:
+  ai:
+    deepseek:
+      enabled: ${DEEPSEEK_ENABLED:true}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      model-name: ${DEEPSEEK_MODEL_NAME:deepseek-v4-flash}
+      timeout-seconds: ${DEEPSEEK_TIMEOUT_SECONDS:60}

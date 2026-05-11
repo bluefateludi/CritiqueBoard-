@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: critiqueboard-postgres
+    environment:
+      POSTGRES_DB: critiqueboard
+      POSTGRES_USER: critiqueboard
+      POSTGRES_PASSWORD: critiqueboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - critiqueboard-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U critiqueboard -d critiqueboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: critiqueboard-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: critiqueboard
+      RABBITMQ_DEFAULT_PASS: critiqueboard
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  critiqueboard-postgres-data:

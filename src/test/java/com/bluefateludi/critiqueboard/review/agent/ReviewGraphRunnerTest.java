@@ -10,6 +10,7 @@ import com.bluefateludi.critiqueboard.review.repository.DocumentChunkRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewCritiqueRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import com.bluefateludi.critiqueboard.review.service.AgentRunService;
+import com.bluefateludi.critiqueboard.review.service.DocumentChunkContextService;
 import com.bluefateludi.critiqueboard.review.service.ReviewCritiqueService;
 import com.bluefateludi.critiqueboard.review.service.ReviewTaskService;
 import org.junit.jupiter.api.Test;
@@ -33,12 +34,14 @@ class ReviewGraphRunnerTest {
         CapturingAgentRunService agentRunService = new CapturingAgentRunService();
         CapturingReviewCritiqueService critiqueService = new CapturingReviewCritiqueService();
         CapturingSpecialistReviewer specialistReviewer = new CapturingSpecialistReviewer();
+        CapturingDocumentChunkContextService chunkContextService = new CapturingDocumentChunkContextService();
         ReviewGraphRunner runner = new LangGraphReviewGraphRunner(
                 progressPublisher,
                 reviewTaskService,
                 agentRunService,
                 critiqueService,
-                specialistReviewer
+                specialistReviewer,
+                chunkContextService
         );
 
         runner.run(reviewTaskId);
@@ -65,6 +68,11 @@ class ReviewGraphRunnerTest {
         assertThat(critiqueService.agentRunIds).containsExactlyElementsOf(agentRunService.startedRunIds);
         assertThat(specialistReviewer.roles).containsExactly(AgentRole.STRUCTURE, AgentRole.LOGIC, AgentRole.RISK);
         assertThat(specialistReviewer.agentRunIds).containsExactlyElementsOf(agentRunService.startedRunIds);
+        assertThat(chunkContextService.loadedReviewTaskIds).containsExactly(reviewTaskId);
+        assertThat(specialistReviewer.documentChunks)
+                .allSatisfy(chunks -> assertThat(chunks)
+                        .extracting(DocumentChunkContext::content)
+                        .containsExactly("Executive summary content.", "Risk plan content."));
     }
 
     private static class CapturingProgressPublisher implements ReviewProgressPublisher {
@@ -139,11 +147,13 @@ class ReviewGraphRunnerTest {
     private static class CapturingSpecialistReviewer implements SpecialistReviewer {
         private final List<AgentRole> roles = new ArrayList<>();
         private final List<UUID> agentRunIds = new ArrayList<>();
+        private final List<List<DocumentChunkContext>> documentChunks = new ArrayList<>();
 
         @Override
         public CritiqueResult review(SpecialistReviewRequest request) {
             roles.add(request.role());
             agentRunIds.add(request.agentRunId());
+            documentChunks.add(request.documentChunks());
             return new CritiqueResult(
                     request.role(),
                     80,
@@ -151,6 +161,23 @@ class ReviewGraphRunnerTest {
                     List.of(),
                     List.of("Captured suggestion."),
                     0.8
+            );
+        }
+    }
+
+    private static class CapturingDocumentChunkContextService extends DocumentChunkContextService {
+        private final List<UUID> loadedReviewTaskIds = new ArrayList<>();
+
+        CapturingDocumentChunkContextService() {
+            super(mock(DocumentChunkRepository.class));
+        }
+
+        @Override
+        public List<DocumentChunkContext> getContextForReviewTask(UUID reviewTaskId) {
+            loadedReviewTaskIds.add(reviewTaskId);
+            return List.of(
+                    new DocumentChunkContext(UUID.randomUUID(), 0, "Executive summary content."),
+                    new DocumentChunkContext(UUID.randomUUID(), 1, "Risk plan content.")
             );
         }
     }

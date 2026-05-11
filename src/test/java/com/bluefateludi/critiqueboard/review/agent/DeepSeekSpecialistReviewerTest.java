@@ -12,6 +12,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +53,8 @@ class DeepSeekSpecialistReviewerTest {
                 UUID.randomUUID(),
                 AgentRole.STRUCTURE,
                 1,
-                "Review document structure."
+                "Review document structure.",
+                List.of()
         ));
 
         assertThat(chatModel.lastPrompt).contains("STRUCTURE");
@@ -62,6 +64,42 @@ class DeepSeekSpecialistReviewerTest {
         assertThat(result.suggestions()).containsExactly("Move the conclusion earlier.");
         assertThat(result.confidence()).isEqualTo(0.91);
         assertThat(result.evidence()).hasSize(1);
+    }
+
+    @Test
+    void includesDocumentChunkContextInPrompt() {
+        UUID chunkId = UUID.fromString("00000000-0000-0000-0000-000000000011");
+        CapturingChatModel chatModel = new CapturingChatModel("""
+                {
+                  "score": 82,
+                  "feedback": "The evidence is grounded.",
+                  "suggestions": [],
+                  "confidence": 0.86,
+                  "evidence": []
+                }
+                """);
+        DeepSeekSpecialistReviewer reviewer = new DeepSeekSpecialistReviewer(
+                chatModel,
+                new ObjectMapper(),
+                enabledProperties(),
+                new DeterministicSpecialistReviewer(),
+                mock(TokenUsageService.class)
+        );
+
+        reviewer.review(new SpecialistReviewRequest(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                AgentRole.LOGIC,
+                1,
+                "Review logic.",
+                List.of(new DocumentChunkContext(chunkId, 2, "The rollout depends on partner approval."))
+        ));
+
+        assertThat(chatModel.lastPrompt)
+                .contains("Document chunks")
+                .contains(chunkId.toString())
+                .contains("chunkIndex: 2")
+                .contains("The rollout depends on partner approval.");
     }
 
     @Test
@@ -85,7 +123,8 @@ class DeepSeekSpecialistReviewerTest {
                 UUID.randomUUID(),
                 AgentRole.RISK,
                 1,
-                "Review risks."
+                "Review risks.",
+                List.of()
         ));
 
         assertThat(result.role()).isEqualTo(AgentRole.RISK);
@@ -116,7 +155,8 @@ class DeepSeekSpecialistReviewerTest {
                 UUID.randomUUID(),
                 AgentRole.LOGIC,
                 1,
-                "Review logic."
+                "Review logic.",
+                List.of()
         ));
 
         assertThat(chatModel.lastPrompt).isNull();
@@ -158,7 +198,14 @@ class DeepSeekSpecialistReviewerTest {
                 tokenUsageService
         );
 
-        reviewer.review(new SpecialistReviewRequest(reviewTaskId, agentRunId, AgentRole.STRUCTURE, 1, "Review structure."));
+        reviewer.review(new SpecialistReviewRequest(
+                reviewTaskId,
+                agentRunId,
+                AgentRole.STRUCTURE,
+                1,
+                "Review structure.",
+                List.of()
+        ));
 
         verify(tokenUsageService).recordModelUsage(
                 eq(reviewTaskId),

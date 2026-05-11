@@ -91,6 +91,9 @@ public class DeepSeekSpecialistReviewer implements SpecialistReviewer {
                 Review task id: %s
                 Round: %d
                 Assignment: %s
+                
+                Document chunks:
+                %s
 
                 Return JSON only with this schema:
                 {
@@ -110,8 +113,27 @@ public class DeepSeekSpecialistReviewer implements SpecialistReviewer {
                 request.role(),
                 request.reviewTaskId(),
                 request.roundNo(),
-                request.inputSummary()
+                request.inputSummary(),
+                formatDocumentChunks(request)
         );
+    }
+
+    private String formatDocumentChunks(SpecialistReviewRequest request) {
+        if (request.documentChunks().isEmpty()) {
+            return "(No document chunks were found for this review task.)";
+        }
+        return request.documentChunks().stream()
+                .map(chunk -> """
+                        - documentChunkId: %s
+                          chunkIndex: %d
+                          content: %s
+                        """.formatted(
+                        chunk.documentChunkId(),
+                        chunk.chunkIndex(),
+                        chunk.content()
+                ))
+                .reduce("", String::concat)
+                .stripTrailing();
     }
 
     private String extractJson(String response) {

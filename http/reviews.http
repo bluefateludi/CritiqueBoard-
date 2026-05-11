@@ -1,0 +1,14 @@
+### Create review task
+POST http://localhost:8080/api/reviews
+Content-Type: application/json
+
+{
+  "title": "Launch Plan",
+  "text": "We will launch the product in Q3. The rollout depends on partner approval.",
+  "requirement": "Review structure, logic, and execution risk.",
+  "secondRoundEnabled": true
+}
+
+### Subscribe to review progress
+GET http://localhost:8080/api/reviews/{{reviewTaskId}}/events
+Accept: text/event-stream

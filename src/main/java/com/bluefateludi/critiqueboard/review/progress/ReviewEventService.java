@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
-public class ReviewEventService {
+public class ReviewEventService implements ReviewProgressPublisher {
 
     private final ConcurrentHashMap<UUID, CopyOnWriteArrayList<SseEmitter>> emittersByTask = new ConcurrentHashMap<>();
 
@@ -28,6 +28,11 @@ public class ReviewEventService {
     }
 
     public void emit(UUID reviewTaskId, ReviewProgressEvent event) {
+        publish(reviewTaskId, event);
+    }
+
+    @Override
+    public void publish(UUID reviewTaskId, ReviewProgressEvent event) {
         List<SseEmitter> emitters = emittersByTask.getOrDefault(reviewTaskId, new CopyOnWriteArrayList<>());
         for (SseEmitter emitter : emitters) {
             try {

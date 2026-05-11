@@ -1,5 +1,7 @@
 package com.bluefateludi.critiqueboard.review.api;
 
+import com.bluefateludi.critiqueboard.review.api.dto.ReviewTaskSummary;
+import com.bluefateludi.critiqueboard.review.domain.ReviewTaskStatus;
 import com.bluefateludi.critiqueboard.review.service.ReviewTaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -48,5 +51,18 @@ class ReviewControllerTest {
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.reviewTaskId", is(reviewTaskId.toString())))
                 .andExpect(jsonPath("$.status", is("PENDING")));
+    }
+
+    @Test
+    void getReviewReturnsTaskStatus() throws Exception {
+        UUID reviewTaskId = UUID.randomUUID();
+        when(reviewTaskService.getReview(reviewTaskId))
+                .thenReturn(new ReviewTaskSummary(reviewTaskId, "Launch Plan", ReviewTaskStatus.RUNNING));
+
+        mockMvc.perform(get("/api/reviews/{id}", reviewTaskId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviewTaskId", is(reviewTaskId.toString())))
+                .andExpect(jsonPath("$.title", is("Launch Plan")))
+                .andExpect(jsonPath("$.status", is("RUNNING")));
     }
 }

@@ -2,8 +2,10 @@ package com.bluefateludi.critiqueboard.review.agent;
 
 import com.bluefateludi.critiqueboard.review.progress.ReviewProgressEvent;
 import com.bluefateludi.critiqueboard.review.progress.ReviewProgressPublisher;
+import com.bluefateludi.critiqueboard.review.service.ReviewTaskService;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -16,7 +18,8 @@ class ReviewGraphRunnerTest {
     void emitsInitialGraphPhasesInOrder() {
         UUID reviewTaskId = UUID.randomUUID();
         CapturingProgressPublisher progressPublisher = new CapturingProgressPublisher();
-        ReviewGraphRunner runner = new LangGraphReviewGraphRunner(progressPublisher);
+        CapturingReviewTaskService reviewTaskService = new CapturingReviewTaskService();
+        ReviewGraphRunner runner = new LangGraphReviewGraphRunner(progressPublisher, reviewTaskService);
 
         runner.run(reviewTaskId);
 
@@ -29,6 +32,13 @@ class ReviewGraphRunnerTest {
                         "SUMMARY_STARTED",
                         "TASK_COMPLETED"
                 );
+        assertThat(reviewTaskService.transitions).containsExactly(
+                "RUNNING",
+                "SUPERVISING",
+                "SPECIALISTS_RUNNING",
+                "SUMMARIZING",
+                "COMPLETED"
+        );
     }
 
     private static class CapturingProgressPublisher implements ReviewProgressPublisher {
@@ -37,6 +47,39 @@ class ReviewGraphRunnerTest {
         @Override
         public void publish(UUID reviewTaskId, ReviewProgressEvent event) {
             events.add(event);
+        }
+    }
+
+    private static class CapturingReviewTaskService extends ReviewTaskService {
+        private final List<String> transitions = new ArrayList<>();
+
+        CapturingReviewTaskService() {
+            super(null, null);
+        }
+
+        @Override
+        public void markRunning(UUID reviewTaskId) {
+            transitions.add("RUNNING");
+        }
+
+        @Override
+        public void markSupervising(UUID reviewTaskId) {
+            transitions.add("SUPERVISING");
+        }
+
+        @Override
+        public void markSpecialistsRunning(UUID reviewTaskId) {
+            transitions.add("SPECIALISTS_RUNNING");
+        }
+
+        @Override
+        public void markSummarizing(UUID reviewTaskId) {
+            transitions.add("SUMMARIZING");
+        }
+
+        @Override
+        public void markCompleted(UUID reviewTaskId) {
+            transitions.add("COMPLETED");
         }
     }
 }

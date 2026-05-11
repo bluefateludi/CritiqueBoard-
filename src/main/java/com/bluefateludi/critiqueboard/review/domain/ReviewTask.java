@@ -45,6 +45,9 @@ public class ReviewTask {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Column(name = "completed_at")
+    private OffsetDateTime completedAt;
+
     private ReviewTask(String title, String originalText, String requirement, boolean secondRoundEnabled) {
         this.title = title;
         this.originalText = originalText;
@@ -57,5 +60,32 @@ public class ReviewTask {
 
     public static ReviewTask create(String title, String originalText, String requirement, boolean secondRoundEnabled) {
         return new ReviewTask(title, originalText, requirement, secondRoundEnabled);
+    }
+
+    public void markRunning() {
+        markStatus(ReviewTaskStatus.RUNNING);
+    }
+
+    public void markSupervising() {
+        markStatus(ReviewTaskStatus.SUPERVISING);
+    }
+
+    public void markSpecialistsRunning() {
+        markStatus(ReviewTaskStatus.SPECIALISTS_RUNNING);
+    }
+
+    public void markSummarizing() {
+        markStatus(ReviewTaskStatus.SUMMARIZING);
+    }
+
+    public void markCompleted() {
+        completedAt = OffsetDateTime.now();
+        status = ReviewTaskStatus.COMPLETED;
+        updatedAt = completedAt;
+    }
+
+    private void markStatus(ReviewTaskStatus nextStatus) {
+        status = nextStatus;
+        updatedAt = OffsetDateTime.now();
     }
 }

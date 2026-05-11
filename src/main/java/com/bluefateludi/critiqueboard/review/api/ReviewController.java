@@ -2,10 +2,13 @@ package com.bluefateludi.critiqueboard.review.api;
 
 import com.bluefateludi.critiqueboard.review.api.dto.CreateReviewRequest;
 import com.bluefateludi.critiqueboard.review.api.dto.CreateReviewResponse;
+import com.bluefateludi.critiqueboard.review.api.dto.ReviewTaskSummary;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTaskStatus;
 import com.bluefateludi.critiqueboard.review.service.ReviewTaskService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,5 +37,10 @@ public class ReviewController {
                 request.secondRoundEnabledOrDefault()
         );
         return new CreateReviewResponse(reviewTaskId, ReviewTaskStatus.PENDING);
+    }
+
+    @GetMapping("/{id}")
+    public ReviewTaskSummary getReview(@PathVariable("id") UUID reviewTaskId) {
+        return reviewTaskService.getReview(reviewTaskId);
     }
 }

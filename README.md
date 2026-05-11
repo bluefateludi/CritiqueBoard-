@@ -83,4 +83,10 @@ GET http://localhost:8080/api/reviews/{{reviewTaskId}}/events
 Accept: text/event-stream
 ```
 
+Query task status:
+
+```http
+GET http://localhost:8080/api/reviews/{{reviewTaskId}}
+```
+
 The current graph runner is still a deterministic skeleton. It emits review phases in order and will be replaced by the real LangGraph4j Supervisor/Specialist graph in the next implementation milestone.

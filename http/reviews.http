@@ -12,3 +12,6 @@ Content-Type: application/json
 ### Subscribe to review progress
 GET http://localhost:8080/api/reviews/{{reviewTaskId}}/events
 Accept: text/event-stream
+
+### Get review task status
+GET http://localhost:8080/api/reviews/{{reviewTaskId}}

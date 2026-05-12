@@ -40,5 +40,6 @@ GET http://localhost:8080/api/reviews/{{reviewTaskId}}
 
 ### Optional local database checks
 # docker compose exec -T postgres psql -U critiqueboard -d critiqueboard -c "select status from review_task where id='{{reviewTaskId}}';"
+# docker compose exec -T postgres psql -U critiqueboard -d critiqueboard -c "select event_type, message from review_event where review_task_id='{{reviewTaskId}}' order by created_at;"
 # docker compose exec -T postgres psql -U critiqueboard -d critiqueboard -c "select count(*) from critique_evidence ce join critique_result cr on cr.id=ce.critique_result_id where cr.review_task_id='{{reviewTaskId}}';"
 # docker compose exec -T rabbitmq rabbitmqctl list_queues name messages messages_ready messages_unacknowledged

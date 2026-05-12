@@ -1,5 +1,7 @@
 package com.bluefateludi.critiqueboard.review.progress;
 
+import com.bluefateludi.critiqueboard.review.domain.ReviewEvent;
+import com.bluefateludi.critiqueboard.review.repository.ReviewEventRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -13,6 +15,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ReviewEventService implements ReviewProgressPublisher {
 
     private final ConcurrentHashMap<UUID, CopyOnWriteArrayList<SseEmitter>> emittersByTask = new ConcurrentHashMap<>();
+    private final ReviewEventRepository reviewEventRepository;
+
+    public ReviewEventService(ReviewEventRepository reviewEventRepository) {
+        this.reviewEventRepository = reviewEventRepository;
+    }
 
     public SseEmitter subscribe(UUID reviewTaskId) {
         SseEmitter emitter = new SseEmitter(0L);
@@ -25,6 +32,13 @@ public class ReviewEventService implements ReviewProgressPublisher {
         emitter.onCompletion(() -> remove(reviewTaskId, emitter));
         emitter.onTimeout(() -> remove(reviewTaskId, emitter));
         emitter.onError(error -> remove(reviewTaskId, emitter));
+        try {
+            for (ReviewEvent event : reviewEventRepository.findByReviewTaskIdOrderByCreatedAtAsc(reviewTaskId)) {
+                send(reviewTaskId, emitter, event.toProgressEvent());
+            }
+        } catch (RuntimeException ignored) {
+            // Live SSE should still work if event replay storage is temporarily unavailable.
+        }
     }
 
     public void emit(UUID reviewTaskId, ReviewProgressEvent event) {
@@ -33,15 +47,24 @@ public class ReviewEventService implements ReviewProgressPublisher {
 
     @Override
     public void publish(UUID reviewTaskId, ReviewProgressEvent event) {
+        try {
+            reviewEventRepository.save(ReviewEvent.from(reviewTaskId, event));
+        } catch (RuntimeException ignored) {
+            // Persisted history is best-effort; live progress must not be blocked.
+        }
         List<SseEmitter> emitters = emittersByTask.getOrDefault(reviewTaskId, new CopyOnWriteArrayList<>());
         for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event()
-                        .name(event.type())
-                        .data(event));
-            } catch (IOException | IllegalStateException ex) {
-                remove(reviewTaskId, emitter);
-            }
+            send(reviewTaskId, emitter, event);
+        }
+    }
+
+    private void send(UUID reviewTaskId, SseEmitter emitter, ReviewProgressEvent event) {
+        try {
+            emitter.send(SseEmitter.event()
+                    .name(event.type())
+                    .data(event));
+        } catch (IOException | IllegalStateException ex) {
+            remove(reviewTaskId, emitter);
         }
     }
 

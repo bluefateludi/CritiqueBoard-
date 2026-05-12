@@ -132,5 +132,5 @@ The worker publishes `TASK_FAILED` over SSE and marks the task `FAILED` if an un
 4. Submit `http/reviews.http` create request.
 5. Open `/api/reviews/{{reviewTaskId}}/events` before or immediately after submitting to observe live SSE progress.
 6. Poll `GET /api/reviews/{{reviewTaskId}}` until `COMPLETED` or `FAILED`.
-7. Confirm Postgres contains one `review_report`, three `agent_run` rows, three `critique_result` rows, and evidence rows referencing `document_chunk` content.
+7. Confirm Postgres contains one `review_report`, three `agent_run` rows, three `critique_result` rows, progress `review_event` rows, and evidence rows referencing `document_chunk` content.
 8. Confirm RabbitMQ queue `review.task.queue` has zero ready and unacknowledged messages.

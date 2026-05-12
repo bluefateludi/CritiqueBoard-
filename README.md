@@ -61,6 +61,13 @@ Default model config is in `src/main/resources/application.yml`.
 mvn spring-boot:run
 ```
 
+For a packaged local smoke test:
+
+```bash
+mvn -DskipTests package
+java -jar target/critiqueboard-0.0.1-SNAPSHOT.jar
+```
+
 ## Test
 
 ```bash
@@ -116,3 +123,14 @@ Completed tasks include Specialist results and a final report:
 ```
 
 The worker publishes `TASK_FAILED` over SSE and marks the task `FAILED` if an unexpected graph/worker error escapes. DeepSeek calls fall back to the deterministic reviewer when the API is disabled, the key is blank, the model call fails, or the JSON response cannot be parsed.
+
+## Local End-to-End Checklist
+
+1. Start infrastructure with `docker compose up -d`.
+2. Set `DEEPSEEK_API_KEY` for real DeepSeek calls. Leave it blank to exercise the deterministic fallback.
+3. Run the app with `mvn spring-boot:run` or the packaged jar.
+4. Submit `http/reviews.http` create request.
+5. Open `/api/reviews/{{reviewTaskId}}/events` before or immediately after submitting to observe live SSE progress.
+6. Poll `GET /api/reviews/{{reviewTaskId}}` until `COMPLETED` or `FAILED`.
+7. Confirm Postgres contains one `review_report`, three `agent_run` rows, three `critique_result` rows, and evidence rows referencing `document_chunk` content.
+8. Confirm RabbitMQ queue `review.task.queue` has zero ready and unacknowledged messages.

@@ -18,12 +18,19 @@ class DeterministicSpecialistReviewerTest {
                 UUID.randomUUID(),
                 AgentRole.RISK,
                 1,
-                "Review risks, missing mitigations, and failure modes."
+                "Review risks, missing mitigations, and failure modes.",
+                java.util.List.of(new DocumentChunkContext(
+                        UUID.randomUUID(),
+                        0,
+                        "The rollout needs a readiness checklist before public release."
+                ))
         ));
 
         assertThat(result.role()).isEqualTo(AgentRole.RISK);
         assertThat(result.score()).isBetween(0, 100);
         assertThat(result.feedback()).containsIgnoringCase("risk");
+        assertThat(result.evidence()).hasSize(1);
+        assertThat(result.evidence().getFirst().quote()).contains("readiness checklist");
         assertThat(result.suggestions()).isNotEmpty();
         assertThat(result.confidence()).isBetween(0.0, 1.0);
     }

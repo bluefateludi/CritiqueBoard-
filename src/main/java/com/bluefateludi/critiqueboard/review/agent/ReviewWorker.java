@@ -31,8 +31,12 @@ public class ReviewWorker {
             reviewGraphRunner.run(message.reviewTaskId());
         } catch (RuntimeException ex) {
             String errorMessage = errorMessage(ex);
-            reviewTaskService.markFailed(message.reviewTaskId(), errorMessage);
             progressPublisher.publish(message.reviewTaskId(), ReviewProgressEvent.of("TASK_FAILED", errorMessage));
+            try {
+                reviewTaskService.markFailed(message.reviewTaskId(), errorMessage);
+            } catch (RuntimeException ignored) {
+                // The original failure has already been turned into a progress event.
+            }
         }
     }
 

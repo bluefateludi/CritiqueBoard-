@@ -14,6 +14,8 @@ import com.bluefateludi.critiqueboard.review.repository.ReviewReportRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.UUID;
@@ -53,7 +55,7 @@ public class ReviewTaskService {
                 .map(chunk -> DocumentChunk.create(saved, chunk.index(), chunk.content()))
                 .toList();
         documentChunkRepository.saveAll(chunks);
-        reviewTaskPublisher.publishReviewTaskCreated(saved.getId());
+        publishTaskCreatedAfterCommit(saved.getId());
         return saved.getId();
     }
 
@@ -117,13 +119,26 @@ public class ReviewTaskService {
         transition.accept(task);
     }
 
+    private void publishTaskCreatedAfterCommit(UUID reviewTaskId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            reviewTaskPublisher.publishReviewTaskCreated(reviewTaskId);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                reviewTaskPublisher.publishReviewTaskCreated(reviewTaskId);
+            }
+        });
+    }
+
     private SpecialistReviewSummary toSpecialistSummary(ReviewCritique critique) {
         return new SpecialistReviewSummary(
                 critique.getRole(),
                 critique.getScore(),
                 critique.getFeedback(),
                 critique.getSuggestions(),
-                critique.getConfidence()
+                critique.getConfidence().doubleValue()
         );
     }
 

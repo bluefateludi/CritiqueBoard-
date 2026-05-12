@@ -3,10 +3,10 @@ POST http://localhost:8080/api/reviews
 Content-Type: application/json
 
 {
-  "title": "Launch Plan",
-  "text": "We will launch the product in Q3. The rollout depends on partner approval.",
-  "requirement": "Review structure, logic, and execution risk.",
-  "secondRoundEnabled": true
+  "title": "Stage 4 E2E Evidence",
+  "text": "The product launch plan says the team will launch in Q3. The plan has a clear milestone list but does not name risk owners. Marketing and engineering dependencies are mentioned without dates. The rollout needs a readiness checklist before public release.",
+  "requirement": "Review structure, logic, and risk. Cite the document chunks when giving evidence.",
+  "secondRoundEnabled": false
 }
 
 ### Subscribe to review progress
@@ -27,5 +27,18 @@ GET http://localhost:8080/api/reviews/{{reviewTaskId}}
 #     "actions": [],
 #     "finalMarkdown": "# Review Report\n\n..."
 #   },
-#   "specialistReviews": []
+#   "specialistReviews": [
+#     {
+#       "role": "STRUCTURE",
+#       "score": 78,
+#       "feedback": "The document has a workable structure, but key conclusions should appear earlier.",
+#       "suggestions": ["Move the main conclusion before detailed execution notes."],
+#       "confidence": 0.7
+#     }
+#   ]
 # }
+
+### Optional local database checks
+# docker compose exec -T postgres psql -U critiqueboard -d critiqueboard -c "select status from review_task where id='{{reviewTaskId}}';"
+# docker compose exec -T postgres psql -U critiqueboard -d critiqueboard -c "select count(*) from critique_evidence ce join critique_result cr on cr.id=ce.critique_result_id where cr.review_task_id='{{reviewTaskId}}';"
+# docker compose exec -T rabbitmq rabbitmqctl list_queues name messages messages_ready messages_unacknowledged

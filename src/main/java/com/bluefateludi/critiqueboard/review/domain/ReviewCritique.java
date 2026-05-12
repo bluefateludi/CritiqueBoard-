@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +44,8 @@ public class ReviewCritique {
     private AgentRun agentRun;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(nullable = false, columnDefinition = "agent_role")
     private AgentRole role;
 
     @Column(nullable = false)
@@ -56,7 +58,8 @@ public class ReviewCritique {
     @Column(nullable = false, columnDefinition = "jsonb")
     private List<String> suggestions = new ArrayList<>();
 
-    private double confidence;
+    @Column(precision = 5, scale = 4)
+    private BigDecimal confidence;
 
     @OneToMany(mappedBy = "critique", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReviewCritiqueEvidence> evidence = new ArrayList<>();
@@ -71,7 +74,7 @@ public class ReviewCritique {
         this.score = result.score();
         this.feedback = result.feedback();
         this.suggestions = new ArrayList<>(result.suggestions());
-        this.confidence = result.confidence();
+        this.confidence = BigDecimal.valueOf(result.confidence());
         this.createdAt = OffsetDateTime.now();
         this.evidence = new ArrayList<>(result.evidence().stream()
                 .map(item -> ReviewCritiqueEvidence.from(this, item))

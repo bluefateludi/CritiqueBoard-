@@ -1,6 +1,11 @@
 package com.bluefateludi.critiqueboard.review.domain;
 
+import jakarta.persistence.Column;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Field;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -49,5 +54,16 @@ class AgentRunTest {
         assertThat(run.getStatus()).isEqualTo(AgentRunStatus.FAILED);
         assertThat(run.getErrorMessage()).isEqualTo("LLM unavailable");
         assertThat(run.getFinishedAt()).isNotNull();
+    }
+
+    @Test
+    void roleAndStatusUsePostgresNamedEnumJdbcType() throws NoSuchFieldException {
+        Field roleField = AgentRun.class.getDeclaredField("role");
+        Field statusField = AgentRun.class.getDeclaredField("status");
+
+        assertThat(roleField.getAnnotation(JdbcTypeCode.class).value()).isEqualTo(SqlTypes.NAMED_ENUM);
+        assertThat(statusField.getAnnotation(JdbcTypeCode.class).value()).isEqualTo(SqlTypes.NAMED_ENUM);
+        assertThat(roleField.getAnnotation(Column.class).columnDefinition()).isEqualTo("agent_role");
+        assertThat(statusField.getAnnotation(Column.class).columnDefinition()).isEqualTo("agent_run_status");
     }
 }

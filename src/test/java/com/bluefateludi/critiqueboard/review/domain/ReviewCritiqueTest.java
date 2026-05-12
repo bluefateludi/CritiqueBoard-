@@ -1,8 +1,13 @@
 package com.bluefateludi.critiqueboard.review.domain;
 
 import com.bluefateludi.critiqueboard.review.agent.CritiqueResult;
+import jakarta.persistence.Column;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,8 +42,16 @@ class ReviewCritiqueTest {
         assertThat(critique.getScore()).isEqualTo(72);
         assertThat(critique.getFeedback()).contains("unvalidated launch timeline");
         assertThat(critique.getSuggestions()).containsExactly("Add a launch readiness checklist.");
-        assertThat(critique.getConfidence()).isEqualTo(0.82);
+        assertThat(critique.getConfidence()).isEqualByComparingTo(new BigDecimal("0.82"));
         assertThat(critique.getEvidence()).hasSize(1);
         assertThat(critique.getEvidence().getFirst().getDocumentChunkId()).isEqualTo(chunkId);
+    }
+
+    @Test
+    void roleUsesPostgresNamedEnumJdbcType() throws NoSuchFieldException {
+        Field roleField = ReviewCritique.class.getDeclaredField("role");
+
+        assertThat(roleField.getAnnotation(JdbcTypeCode.class).value()).isEqualTo(SqlTypes.NAMED_ENUM);
+        assertThat(roleField.getAnnotation(Column.class).columnDefinition()).isEqualTo("agent_role");
     }
 }

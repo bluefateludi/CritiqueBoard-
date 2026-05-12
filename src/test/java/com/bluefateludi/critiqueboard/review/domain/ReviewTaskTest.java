@@ -1,6 +1,11 @@
 package com.bluefateludi.critiqueboard.review.domain;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import jakarta.persistence.Column;
 import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Field;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -63,5 +68,13 @@ class ReviewTaskTest {
         assertThat(task.getStatus()).isEqualTo(ReviewTaskStatus.FAILED);
         assertThat(task.getErrorMessage()).isEqualTo("DeepSeek JSON parsing failed");
         assertThat(task.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    void statusUsesPostgresNamedEnumJdbcType() throws NoSuchFieldException {
+        Field statusField = ReviewTask.class.getDeclaredField("status");
+
+        assertThat(statusField.getAnnotation(JdbcTypeCode.class).value()).isEqualTo(SqlTypes.NAMED_ENUM);
+        assertThat(statusField.getAnnotation(Column.class).columnDefinition()).isEqualTo("review_task_status");
     }
 }

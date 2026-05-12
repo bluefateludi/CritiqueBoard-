@@ -10,6 +10,8 @@ import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -150,6 +152,44 @@ class ReviewTaskServiceTest {
         assertThat(savedChunks.get(1).getChunkIndex()).isEqualTo(1);
         assertThat(savedChunks.get(1).getContent()).isEqualTo("Second paragraph.");
         assertThat(publisher.publishedIds).containsExactly(persistedId);
+    }
+
+    @Test
+    void createReviewPublishesTaskOnlyAfterActiveTransactionCommits() {
+        ReviewTaskRepository repository = mock(ReviewTaskRepository.class);
+        DocumentChunkRepository chunkRepository = mock(DocumentChunkRepository.class);
+        CapturingPublisher publisher = new CapturingPublisher();
+        UUID persistedId = UUID.randomUUID();
+        when(repository.save(any(ReviewTask.class))).thenAnswer(invocation -> {
+            ReviewTask task = invocation.getArgument(0);
+            ReflectionTestUtils.setField(task, "id", persistedId);
+            return task;
+        });
+        ReviewTaskService service = new ReviewTaskService(
+                repository,
+                chunkRepository,
+                mock(ReviewCritiqueRepository.class),
+                mock(ReviewReportRepository.class),
+                new DocumentChunker(),
+                publisher
+        );
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.createReview(
+                    "Launch Plan",
+                    "First paragraph.",
+                    "Review structure, logic, and risk.",
+                    true
+            );
+
+            assertThat(publisher.publishedIds).isEmpty();
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+            assertThat(publisher.publishedIds).containsExactly(persistedId);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     private static class CapturingPublisher implements ReviewTaskPublisher {

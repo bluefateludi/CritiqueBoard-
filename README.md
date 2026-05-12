@@ -1,6 +1,6 @@
 # CRITIQUEBOARD
 
-CRITIQUEBOARD is an API-first multi-agent review system. A user submits text and review requirements, the backend creates an asynchronous review task, publishes it to RabbitMQ, streams progress over SSE, and prepares the path for LangGraph4j/LangChain4j Specialist review.
+CRITIQUEBOARD is an API-first multi-agent review system. A user submits text and review requirements, the backend creates an asynchronous review task, chunks the document, publishes the task to RabbitMQ, streams progress over SSE, runs Specialist reviewers with document evidence, and stores a final review report.
 
 ## Stack
 
@@ -96,4 +96,23 @@ Query task status:
 GET http://localhost:8080/api/reviews/{{reviewTaskId}}
 ```
 
-The current graph runner is still a deterministic skeleton. It emits review phases in order and will be replaced by the real LangGraph4j Supervisor/Specialist graph in the next implementation milestone.
+Completed tasks include Specialist results and a final report:
+
+```json
+{
+  "reviewTaskId": "00000000-0000-0000-0000-000000000000",
+  "title": "Launch Plan",
+  "status": "COMPLETED",
+  "report": {
+    "overallScore": 76,
+    "summary": "Synthesized 3 specialist reviews with an overall score of 76.",
+    "strengths": ["The document has a workable structure."],
+    "weaknesses": ["The risk section needs clearer mitigation owners."],
+    "actions": ["Add risk owners, trigger thresholds, and rollback actions."],
+    "finalMarkdown": "# Review Report\n\n..."
+  },
+  "specialistReviews": []
+}
+```
+
+The worker publishes `TASK_FAILED` over SSE and marks the task `FAILED` if an unexpected graph/worker error escapes. DeepSeek calls fall back to the deterministic reviewer when the API is disabled, the key is blank, the model call fails, or the JSON response cannot be parsed.

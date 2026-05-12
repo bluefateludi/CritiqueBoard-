@@ -48,4 +48,20 @@ class ReviewTaskTest {
         assertThat(task.getCompletedAt()).isNotNull();
         assertThat(task.getUpdatedAt()).isEqualTo(task.getCompletedAt());
     }
+
+    @Test
+    void markFailedStoresErrorMessageAndCompletesTask() {
+        ReviewTask task = ReviewTask.create(
+                "Launch Plan",
+                "We will launch the product in Q3.",
+                "Review structure, logic, and risk.",
+                true
+        );
+
+        task.markFailed("DeepSeek JSON parsing failed");
+
+        assertThat(task.getStatus()).isEqualTo(ReviewTaskStatus.FAILED);
+        assertThat(task.getErrorMessage()).isEqualTo("DeepSeek JSON parsing failed");
+        assertThat(task.getCompletedAt()).isNotNull();
+    }
 }

@@ -32,4 +32,22 @@ class AgentRunTest {
         assertThat(run.getOutputSummary()).isEqualTo("Structure is clear overall.");
         assertThat(run.getFinishedAt()).isNotNull();
     }
+
+    @Test
+    void markFailedStoresErrorMessageAndFinishTime() {
+        ReviewTask task = ReviewTask.create(
+                "Launch Plan",
+                "We will launch the product in Q3.",
+                "Review structure, logic, and risk.",
+                true
+        );
+        AgentRun run = AgentRun.create(task, AgentRole.RISK, 1, "Review risks.");
+        run.markRunning();
+
+        run.markFailed("LLM unavailable");
+
+        assertThat(run.getStatus()).isEqualTo(AgentRunStatus.FAILED);
+        assertThat(run.getErrorMessage()).isEqualTo("LLM unavailable");
+        assertThat(run.getFinishedAt()).isNotNull();
+    }
 }

@@ -54,6 +54,9 @@ public class AgentRun {
     @Column(name = "finished_at")
     private OffsetDateTime finishedAt;
 
+    @Column(name = "error_message")
+    private String errorMessage;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -78,6 +81,12 @@ public class AgentRun {
     public void markCompleted(String outputSummary) {
         this.outputSummary = outputSummary;
         status = AgentRunStatus.COMPLETED;
+        finishedAt = OffsetDateTime.now();
+    }
+
+    public void markFailed(String errorMessage) {
+        this.errorMessage = errorMessage;
+        status = AgentRunStatus.FAILED;
         finishedAt = OffsetDateTime.now();
     }
 }

@@ -15,3 +15,17 @@ Accept: text/event-stream
 
 ### Get review task status
 GET http://localhost:8080/api/reviews/{{reviewTaskId}}
+
+### Expected completed response shape
+# {
+#   "status": "COMPLETED",
+#   "report": {
+#     "overallScore": 76,
+#     "summary": "Synthesized 3 specialist reviews with an overall score of 76.",
+#     "strengths": [],
+#     "weaknesses": [],
+#     "actions": [],
+#     "finalMarkdown": "# Review Report\n\n..."
+#   },
+#   "specialistReviews": []
+# }

@@ -1,13 +1,16 @@
 package com.bluefateludi.critiqueboard.review.service;
 
 import com.bluefateludi.critiqueboard.review.api.dto.ReviewTaskSummary;
+import com.bluefateludi.critiqueboard.review.api.dto.ReviewReportSummary;
 import com.bluefateludi.critiqueboard.review.api.dto.SpecialistReviewSummary;
 import com.bluefateludi.critiqueboard.review.chunk.DocumentChunker;
 import com.bluefateludi.critiqueboard.review.domain.DocumentChunk;
 import com.bluefateludi.critiqueboard.review.domain.ReviewCritique;
+import com.bluefateludi.critiqueboard.review.domain.ReviewReport;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTask;
 import com.bluefateludi.critiqueboard.review.repository.DocumentChunkRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewCritiqueRepository;
+import com.bluefateludi.critiqueboard.review.repository.ReviewReportRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +25,7 @@ public class ReviewTaskService {
     private final ReviewTaskRepository reviewTaskRepository;
     private final DocumentChunkRepository documentChunkRepository;
     private final ReviewCritiqueRepository reviewCritiqueRepository;
+    private final ReviewReportRepository reviewReportRepository;
     private final DocumentChunker documentChunker;
     private final ReviewTaskPublisher reviewTaskPublisher;
 
@@ -29,12 +33,14 @@ public class ReviewTaskService {
             ReviewTaskRepository reviewTaskRepository,
             DocumentChunkRepository documentChunkRepository,
             ReviewCritiqueRepository reviewCritiqueRepository,
+            ReviewReportRepository reviewReportRepository,
             DocumentChunker documentChunker,
             ReviewTaskPublisher reviewTaskPublisher
     ) {
         this.reviewTaskRepository = reviewTaskRepository;
         this.documentChunkRepository = documentChunkRepository;
         this.reviewCritiqueRepository = reviewCritiqueRepository;
+        this.reviewReportRepository = reviewReportRepository;
         this.documentChunker = documentChunker;
         this.reviewTaskPublisher = reviewTaskPublisher;
     }
@@ -60,7 +66,17 @@ public class ReviewTaskService {
                 .stream()
                 .map(this::toSpecialistSummary)
                 .toList();
-        return new ReviewTaskSummary(task.getId(), task.getTitle(), task.getStatus(), specialistReviews);
+        ReviewReportSummary report = reviewReportRepository.findByReviewTaskId(reviewTaskId)
+                .map(this::toReportSummary)
+                .orElse(null);
+        return new ReviewTaskSummary(
+                task.getId(),
+                task.getTitle(),
+                task.getStatus(),
+                task.getErrorMessage(),
+                report,
+                specialistReviews
+        );
     }
 
     @Transactional
@@ -88,6 +104,13 @@ public class ReviewTaskService {
         updateTask(reviewTaskId, ReviewTask::markCompleted);
     }
 
+    @Transactional
+    public void markFailed(UUID reviewTaskId, String errorMessage) {
+        ReviewTask task = reviewTaskRepository.findById(reviewTaskId)
+                .orElseThrow(() -> new IllegalArgumentException("Review task not found: " + reviewTaskId));
+        task.markFailed(errorMessage);
+    }
+
     private void updateTask(UUID reviewTaskId, Consumer<ReviewTask> transition) {
         ReviewTask task = reviewTaskRepository.findById(reviewTaskId)
                 .orElseThrow(() -> new IllegalArgumentException("Review task not found: " + reviewTaskId));
@@ -101,6 +124,17 @@ public class ReviewTaskService {
                 critique.getFeedback(),
                 critique.getSuggestions(),
                 critique.getConfidence()
+        );
+    }
+
+    private ReviewReportSummary toReportSummary(ReviewReport report) {
+        return new ReviewReportSummary(
+                report.getOverallScore(),
+                report.getExecutiveSummary(),
+                report.getStrengths(),
+                report.getWeaknesses(),
+                report.getPrioritizedActions(),
+                report.getFinalMarkdown()
         );
     }
 }

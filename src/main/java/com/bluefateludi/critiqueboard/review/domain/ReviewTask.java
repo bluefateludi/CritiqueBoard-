@@ -48,6 +48,9 @@ public class ReviewTask {
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
 
+    @Column(name = "error_message")
+    private String errorMessage;
+
     private ReviewTask(String title, String originalText, String requirement, boolean secondRoundEnabled) {
         this.title = title;
         this.originalText = originalText;
@@ -81,6 +84,13 @@ public class ReviewTask {
     public void markCompleted() {
         completedAt = OffsetDateTime.now();
         status = ReviewTaskStatus.COMPLETED;
+        updatedAt = completedAt;
+    }
+
+    public void markFailed(String errorMessage) {
+        completedAt = OffsetDateTime.now();
+        status = ReviewTaskStatus.FAILED;
+        this.errorMessage = errorMessage;
         updatedAt = completedAt;
     }
 

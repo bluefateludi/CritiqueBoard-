@@ -5,6 +5,7 @@ import com.bluefateludi.critiqueboard.review.domain.DocumentChunk;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTask;
 import com.bluefateludi.critiqueboard.review.repository.DocumentChunkRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewCritiqueRepository;
+import com.bluefateludi.critiqueboard.review.repository.ReviewReportRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -35,7 +36,14 @@ class ReviewTaskServiceTest {
             return task;
         });
 
-        ReviewTaskService service = new ReviewTaskService(repository, chunkRepository, mock(ReviewCritiqueRepository.class), new DocumentChunker(), publisher);
+        ReviewTaskService service = new ReviewTaskService(
+                repository,
+                chunkRepository,
+                mock(ReviewCritiqueRepository.class),
+                mock(ReviewReportRepository.class),
+                new DocumentChunker(),
+                publisher
+        );
 
         UUID reviewTaskId = service.createReview(
                 "Launch Plan",
@@ -65,6 +73,7 @@ class ReviewTaskServiceTest {
                 repository,
                 mock(DocumentChunkRepository.class),
                 mock(ReviewCritiqueRepository.class),
+                mock(ReviewReportRepository.class),
                 new DocumentChunker(),
                 new CapturingPublisher()
         );
@@ -72,6 +81,33 @@ class ReviewTaskServiceTest {
         service.markRunning(reviewTaskId);
 
         assertThat(task.getStatus()).isEqualTo(com.bluefateludi.critiqueboard.review.domain.ReviewTaskStatus.RUNNING);
+        verify(repository).findById(reviewTaskId);
+    }
+
+    @Test
+    void markFailedLoadsTaskAndStoresErrorMessage() {
+        ReviewTaskRepository repository = mock(ReviewTaskRepository.class);
+        ReviewTask task = ReviewTask.create(
+                "Launch Plan",
+                "We will launch the product in Q3.",
+                "Review structure, logic, and risk.",
+                true
+        );
+        UUID reviewTaskId = UUID.randomUUID();
+        when(repository.findById(reviewTaskId)).thenReturn(Optional.of(task));
+        ReviewTaskService service = new ReviewTaskService(
+                repository,
+                mock(DocumentChunkRepository.class),
+                mock(ReviewCritiqueRepository.class),
+                mock(ReviewReportRepository.class),
+                new DocumentChunker(),
+                new CapturingPublisher()
+        );
+
+        service.markFailed(reviewTaskId, "Worker crashed");
+
+        assertThat(task.getStatus()).isEqualTo(com.bluefateludi.critiqueboard.review.domain.ReviewTaskStatus.FAILED);
+        assertThat(task.getErrorMessage()).isEqualTo("Worker crashed");
         verify(repository).findById(reviewTaskId);
     }
 
@@ -87,7 +123,14 @@ class ReviewTaskServiceTest {
             return task;
         });
 
-        ReviewTaskService service = new ReviewTaskService(repository, chunkRepository, mock(ReviewCritiqueRepository.class), new DocumentChunker(), publisher);
+        ReviewTaskService service = new ReviewTaskService(
+                repository,
+                chunkRepository,
+                mock(ReviewCritiqueRepository.class),
+                mock(ReviewReportRepository.class),
+                new DocumentChunker(),
+                publisher
+        );
 
         service.createReview(
                 "Launch Plan",

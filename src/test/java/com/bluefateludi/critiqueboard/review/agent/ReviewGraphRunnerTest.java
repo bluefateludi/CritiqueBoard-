@@ -8,10 +8,12 @@ import com.bluefateludi.critiqueboard.review.domain.AgentRun;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTask;
 import com.bluefateludi.critiqueboard.review.repository.DocumentChunkRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewCritiqueRepository;
+import com.bluefateludi.critiqueboard.review.repository.ReviewReportRepository;
 import com.bluefateludi.critiqueboard.review.repository.ReviewTaskRepository;
 import com.bluefateludi.critiqueboard.review.service.AgentRunService;
 import com.bluefateludi.critiqueboard.review.service.DocumentChunkContextService;
 import com.bluefateludi.critiqueboard.review.service.ReviewCritiqueService;
+import com.bluefateludi.critiqueboard.review.service.ReviewReportService;
 import com.bluefateludi.critiqueboard.review.service.ReviewTaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -33,6 +35,7 @@ class ReviewGraphRunnerTest {
         CapturingReviewTaskService reviewTaskService = new CapturingReviewTaskService();
         CapturingAgentRunService agentRunService = new CapturingAgentRunService();
         CapturingReviewCritiqueService critiqueService = new CapturingReviewCritiqueService();
+        CapturingReviewReportService reportService = new CapturingReviewReportService();
         CapturingSpecialistReviewer specialistReviewer = new CapturingSpecialistReviewer();
         CapturingDocumentChunkContextService chunkContextService = new CapturingDocumentChunkContextService();
         ReviewGraphRunner runner = new LangGraphReviewGraphRunner(
@@ -40,6 +43,7 @@ class ReviewGraphRunnerTest {
                 reviewTaskService,
                 agentRunService,
                 critiqueService,
+                reportService,
                 specialistReviewer,
                 chunkContextService
         );
@@ -66,6 +70,7 @@ class ReviewGraphRunnerTest {
         assertThat(agentRunService.completedRunIds).containsExactlyElementsOf(agentRunService.startedRunIds);
         assertThat(critiqueService.roles).containsExactly(AgentRole.STRUCTURE, AgentRole.LOGIC, AgentRole.RISK);
         assertThat(critiqueService.agentRunIds).containsExactlyElementsOf(agentRunService.startedRunIds);
+        assertThat(reportService.generatedReviewTaskIds).containsExactly(reviewTaskId);
         assertThat(specialistReviewer.roles).containsExactly(AgentRole.STRUCTURE, AgentRole.LOGIC, AgentRole.RISK);
         assertThat(specialistReviewer.agentRunIds).containsExactlyElementsOf(agentRunService.startedRunIds);
         assertThat(chunkContextService.loadedReviewTaskIds).containsExactly(reviewTaskId);
@@ -73,6 +78,38 @@ class ReviewGraphRunnerTest {
                 .allSatisfy(chunks -> assertThat(chunks)
                         .extracting(DocumentChunkContext::content)
                         .containsExactly("Executive summary content.", "Risk plan content."));
+    }
+
+    @Test
+    void marksTaskAndCurrentAgentRunFailedWhenSpecialistThrows() {
+        UUID reviewTaskId = UUID.randomUUID();
+        CapturingProgressPublisher progressPublisher = new CapturingProgressPublisher();
+        CapturingReviewTaskService reviewTaskService = new CapturingReviewTaskService();
+        CapturingAgentRunService agentRunService = new CapturingAgentRunService();
+        CapturingReviewCritiqueService critiqueService = new CapturingReviewCritiqueService();
+        CapturingReviewReportService reportService = new CapturingReviewReportService();
+        FailingSpecialistReviewer specialistReviewer = new FailingSpecialistReviewer();
+        CapturingDocumentChunkContextService chunkContextService = new CapturingDocumentChunkContextService();
+        ReviewGraphRunner runner = new LangGraphReviewGraphRunner(
+                progressPublisher,
+                reviewTaskService,
+                agentRunService,
+                critiqueService,
+                reportService,
+                specialistReviewer,
+                chunkContextService
+        );
+
+        runner.run(reviewTaskId);
+
+        assertThat(agentRunService.failedRunIds).containsExactly(agentRunService.startedRunIds.getFirst());
+        assertThat(agentRunService.failureMessages.getFirst()).contains("Specialist failed");
+        assertThat(reviewTaskService.transitions).contains("FAILED");
+        assertThat(reviewTaskService.failureMessages.getFirst()).contains("Specialist failed");
+        assertThat(progressPublisher.events)
+                .extracting(ReviewProgressEvent::type)
+                .contains("TASK_FAILED");
+        assertThat(reportService.generatedReviewTaskIds).isEmpty();
     }
 
     private static class CapturingProgressPublisher implements ReviewProgressPublisher {
@@ -86,12 +123,14 @@ class ReviewGraphRunnerTest {
 
     private static class CapturingReviewTaskService extends ReviewTaskService {
         private final List<String> transitions = new ArrayList<>();
+        private final List<String> failureMessages = new ArrayList<>();
 
         CapturingReviewTaskService() {
             super(
                     mock(ReviewTaskRepository.class),
                     mock(DocumentChunkRepository.class),
                     mock(ReviewCritiqueRepository.class),
+                    mock(ReviewReportRepository.class),
                     new DocumentChunker(),
                     reviewTaskId -> {
                     }
@@ -121,6 +160,12 @@ class ReviewGraphRunnerTest {
         @Override
         public void markCompleted(UUID reviewTaskId) {
             transitions.add("COMPLETED");
+        }
+
+        @Override
+        public void markFailed(UUID reviewTaskId, String errorMessage) {
+            transitions.add("FAILED");
+            failureMessages.add(errorMessage);
         }
     }
 
@@ -165,6 +210,27 @@ class ReviewGraphRunnerTest {
         }
     }
 
+    private static class FailingSpecialistReviewer implements SpecialistReviewer {
+        @Override
+        public CritiqueResult review(SpecialistReviewRequest request) {
+            throw new IllegalStateException("Specialist failed");
+        }
+    }
+
+    private static class CapturingReviewReportService extends ReviewReportService {
+        private final List<UUID> generatedReviewTaskIds = new ArrayList<>();
+
+        CapturingReviewReportService() {
+            super(mock(ReviewTaskRepository.class), mock(ReviewCritiqueRepository.class), mock(ReviewReportRepository.class));
+        }
+
+        @Override
+        public com.bluefateludi.critiqueboard.review.domain.ReviewReport generateFinalReport(UUID reviewTaskId) {
+            generatedReviewTaskIds.add(reviewTaskId);
+            return null;
+        }
+    }
+
     private static class CapturingDocumentChunkContextService extends DocumentChunkContextService {
         private final List<UUID> loadedReviewTaskIds = new ArrayList<>();
 
@@ -187,6 +253,8 @@ class ReviewGraphRunnerTest {
         private final List<AgentRole> startedRoles = new ArrayList<>();
         private final List<UUID> startedRunIds = new ArrayList<>();
         private final List<UUID> completedRunIds = new ArrayList<>();
+        private final List<UUID> failedRunIds = new ArrayList<>();
+        private final List<String> failureMessages = new ArrayList<>();
 
         CapturingAgentRunService() {
             super(mock(ReviewTaskRepository.class), mock());
@@ -206,6 +274,12 @@ class ReviewGraphRunnerTest {
         @Override
         public void completeRun(UUID agentRunId, String outputSummary) {
             completedRunIds.add(agentRunId);
+        }
+
+        @Override
+        public void failRun(UUID agentRunId, String errorMessage) {
+            failedRunIds.add(agentRunId);
+            failureMessages.add(errorMessage);
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.bluefateludi.critiqueboard.review.api;
 
 import com.bluefateludi.critiqueboard.review.api.dto.ReviewTaskSummary;
+import com.bluefateludi.critiqueboard.review.api.dto.ReviewReportSummary;
 import com.bluefateludi.critiqueboard.review.api.dto.SpecialistReviewSummary;
 import com.bluefateludi.critiqueboard.review.domain.AgentRole;
 import com.bluefateludi.critiqueboard.review.domain.ReviewTaskStatus;
@@ -64,6 +65,8 @@ class ReviewControllerTest {
                         reviewTaskId,
                         "Launch Plan",
                         ReviewTaskStatus.RUNNING,
+                        null,
+                        null,
                         List.of(new SpecialistReviewSummary(
                                 AgentRole.STRUCTURE,
                                 78,
@@ -81,5 +84,55 @@ class ReviewControllerTest {
                 .andExpect(jsonPath("$.specialistReviews[0].role", is("STRUCTURE")))
                 .andExpect(jsonPath("$.specialistReviews[0].score", is(78)))
                 .andExpect(jsonPath("$.specialistReviews[0].suggestions[0]", is("Move the main conclusion earlier.")));
+    }
+
+    @Test
+    void getReviewReturnsFailureErrorMessage() throws Exception {
+        UUID reviewTaskId = UUID.randomUUID();
+        when(reviewTaskService.getReview(reviewTaskId))
+                .thenReturn(new ReviewTaskSummary(
+                        reviewTaskId,
+                        "Launch Plan",
+                        ReviewTaskStatus.FAILED,
+                        "Worker crashed",
+                        null,
+                        List.of()
+                ));
+
+        mockMvc.perform(get("/api/reviews/{id}", reviewTaskId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("FAILED")))
+                .andExpect(jsonPath("$.errorMessage", is("Worker crashed")));
+    }
+
+    @Test
+    void getReviewReturnsFinalReportWhenAvailable() throws Exception {
+        UUID reviewTaskId = UUID.randomUUID();
+        when(reviewTaskService.getReview(reviewTaskId))
+                .thenReturn(new ReviewTaskSummary(
+                        reviewTaskId,
+                        "Launch Plan",
+                        ReviewTaskStatus.COMPLETED,
+                        null,
+                        new ReviewReportSummary(
+                                82,
+                                "Three specialists found a solid plan.",
+                                List.of("Clear structure."),
+                                List.of("Risk owners are thin."),
+                                List.of("Assign mitigation owners."),
+                                "# Review Report\n\n## Summary"
+                        ),
+                        List.of()
+                ));
+
+        mockMvc.perform(get("/api/reviews/{id}", reviewTaskId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("COMPLETED")))
+                .andExpect(jsonPath("$.report.overallScore", is(82)))
+                .andExpect(jsonPath("$.report.summary", is("Three specialists found a solid plan.")))
+                .andExpect(jsonPath("$.report.strengths[0]", is("Clear structure.")))
+                .andExpect(jsonPath("$.report.weaknesses[0]", is("Risk owners are thin.")))
+                .andExpect(jsonPath("$.report.actions[0]", is("Assign mitigation owners.")))
+                .andExpect(jsonPath("$.report.finalMarkdown", is("# Review Report\n\n## Summary")));
     }
 }

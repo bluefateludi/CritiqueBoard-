@@ -71,4 +71,26 @@ class AgentRunServiceTest {
         assertThat(run.getOutputSummary()).isEqualTo("Logic review complete.");
         assertThat(run.getFinishedAt()).isNotNull();
     }
+
+    @Test
+    void failsExistingRunWithErrorMessage() {
+        ReviewTaskRepository reviewTaskRepository = mock(ReviewTaskRepository.class);
+        AgentRunRepository agentRunRepository = mock(AgentRunRepository.class);
+        ReviewTask task = ReviewTask.create(
+                "Launch Plan",
+                "We will launch the product in Q3.",
+                "Review structure, logic, and risk.",
+                true
+        );
+        AgentRun run = AgentRun.create(task, AgentRole.RISK, 1, "Review risks.");
+        UUID agentRunId = UUID.randomUUID();
+        when(agentRunRepository.findById(agentRunId)).thenReturn(Optional.of(run));
+        AgentRunService service = new AgentRunService(reviewTaskRepository, agentRunRepository);
+
+        service.failRun(agentRunId, "LLM unavailable");
+
+        assertThat(run.getStatus()).isEqualTo(AgentRunStatus.FAILED);
+        assertThat(run.getErrorMessage()).isEqualTo("LLM unavailable");
+        assertThat(run.getFinishedAt()).isNotNull();
+    }
 }

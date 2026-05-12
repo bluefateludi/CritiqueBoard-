@@ -36,4 +36,11 @@ public class AgentRunService {
                 .orElseThrow(() -> new IllegalArgumentException("Agent run not found: " + agentRunId));
         run.markCompleted(outputSummary);
     }
+
+    @Transactional
+    public void failRun(UUID agentRunId, String errorMessage) {
+        AgentRun run = agentRunRepository.findById(agentRunId)
+                .orElseThrow(() -> new IllegalArgumentException("Agent run not found: " + agentRunId));
+        run.markFailed(errorMessage);
+    }
 }
